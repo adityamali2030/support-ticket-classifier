@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+
+.env
+.env.*
+!.env.example
+
+# Exclude datasets and generated models
+data/*
+!data/.gitkeep
+models/

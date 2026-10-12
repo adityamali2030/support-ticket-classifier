@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support Ticket Classifier</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f3f5fa;
+      color: #172033;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    main {
+      max-width: 680px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px #17203310;
+    }
+    h1 { margin-top: 0; }
+    label { display: block; margin-bottom: 10px; font-weight: 600; }
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 140px;
+      padding: 12px;
+      border: 1px solid #aab4c4;
+      border-radius: 8px;
+      font: inherit;
+    }
+    button {
+      margin-top: 16px;
+      padding: 12px 20px;
+      background: #3155d9;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .notice {
+      background: #fff5dc;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #result { margin-top: 24px; }
+    #status { color: #49566b; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Support Ticket Classifier</h1>
+    <p>Local NLP model · TF-IDF + Logistic Regression</p>
+    <p class="notice">
+      Educational demo trained on synthetic messages.
+      Suggestions require human review. Model scores are not
+      calibrated confidence, and unrelated text still gets a category.
+    </p>
+
+    <form id="ticket-form">
+      <label for="text">Support message</label>
+      <textarea id="text" maxlength="5000" required
+        placeholder="Example: I need a copy of my invoice."></textarea>
+      <button id="submit" type="submit">Suggest category</button>
+    </form>
+
+    <p id="status" role="status"></p>
+    <section id="result" aria-live="polite" hidden>
+      <h2 id="category"></h2>
+      <p>Top model scores:</p>
+      <ul id="scores"></ul>
+      <p>Human review required.</p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("ticket-form");
+    const button = document.getElementById("submit");
+    const status = document.getElementById("status");
+    const result = document.getElementById("result");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = document.getElementById("text").value.trim();
+      result.hidden = true;
+
+      if (!text) {
+        status.textContent = "Please enter a message.";
+        return;
+      }
+
+      button.disabled = true;
+      status.textContent = "Classifying…";
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+          throw new Error("Request failed. Check your input and server.");
+        }
+
+        const data = await response.json();
+        document.getElementById("category").textContent =
+          "Suggested category: " + data.suggested_category;
+
+        const list = document.getElementById("scores");
+        list.replaceChildren();
+
+        for (const item of data.top_categories) {
+          const row = document.createElement("li");
+          row.textContent = item.category + ": " + item.score.toFixed(4);
+          list.appendChild(row);
+        }
+
+        result.hidden = false;
+        status.textContent = "Prediction complete.";
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
